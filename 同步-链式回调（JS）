@@ -82,7 +82,7 @@ fnC的功能：将参数打印出来；
 // 将入参乘上10，然后传给fnB，同时规定fnB的倒计时时间（10s）...
 function FnA(arg,callback){
 	this.fnCont = function(tArg){
-		console.log("from FnA：入参的值是 " + tArg);
+		console.log("from FnA：入参的值是 " + arg);
 		var num = arg * 10 ;
 		if(typeof callback == "function"){
 			console.log("from FnA：执行回调函数");
