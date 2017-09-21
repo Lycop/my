@@ -1,0 +1,154 @@
+函数说明：
+多个需要通过回调调用的函数，依照顺序依次调用。
+
+函数源码：
+/**
+ * 链式回调函数
+ * */
+function chainedFn(chain){
+	// 入参数据校验 ...
+	for(var i=0;i<chain.length;i++){
+		if(!chain[i]["fnName"] || (typeof chain[i]["fnName"]) != "function"){
+			console.log("error：参数有误！");
+			return;
+		}
+	}
+	
+	// 如果只有一条，则直接调用 ...
+	if(chain.length < 2){
+		(new chain[0]["fnName"](chain[0]["fnArg"])).fnCont();
+		return;
+	}
+
+	// 组合链式函数 ...
+	var firstFn = (function combinationFn(index){
+		var curFnIndex = index || 0; //当前函数索引
+		var curArg = chain[curFnIndex]["fnArg"] || ""; //当前函数参数
+		var callBack = ""; //当前函数参数回调
+
+		// 如果存在下一条，则将下一条绑定为当前的回调 ...
+		if(curFnIndex + 1 <  chain.length){
+			callBack  = combinationFn(curFnIndex + 1).fnCont;
+		}
+
+		var curFn = new chain[curFnIndex]["fnName"](curArg,callBack);	
+		if(curFn){
+			return curFn;
+		}else{
+			return false;
+		}
+
+	})();
+
+	// 启动链式回调 ...
+	if(typeof firstFn.fnCont == "function"){
+		firstFn.fnCont(chain[0]["fnArg"]);
+	}
+
+}
+
+
+调用模板：
+chainedFn([
+	   {"fnName":对象名A,"fnArg":实例化参数},
+	   {"fnName":对象名B,"fnArg":实例化参数},
+	   {"fnName":对象名C,"fnArg":实例化参数}
+	   ]);
+	   
+说明：chainedFn的参数是JSON数组，【实例化】参数可无；【对象名】需存在，且符合“对象模版”；
+	   
+对象模版：
+	function 对象名(实例化参数,callback){
+		this.fnCont = function(tArg1,tArg2...){ //fnCont：函数主体(函数名不可变)，tArg：被回调的入参(参数类型和进行回调的函数约定)
+			// 函数功能代码 ...
+			
+			
+			if(typeof callback == "function"){
+				callback(tArg1,tArg2...);//回调的入参(参数类型和被回调的函数约定)
+			}
+		}
+	};
+说明：【实例参数】可为空，【callback】和下边使用一致(建议不修改)；【this.fnCont】为函数主体，函数名不可修改；【fnCont】等于前一个对象的【callback】即：
+【“对象B”的fnCont】等于【对象A的callback】，【“对象C”的fnCont】等于【对象B的callback】...
+
+
+
+函数示例：
+假设现在有3个需要同步的函数：fnA(FnA)，fnB(FnB)，fbC(FnC)；
+fnA的功能：将入参乘上10，然后传给fnB，同时规定fnB的倒计时时间；
+fnB的功能：进入倒计时，倒计时结束后，将入参乘上5，然后传给fnC；
+fnC的功能：将参数打印出来；
+
+// 将入参乘上10，然后传给fnB，同时规定fnB的倒计时时间（10s）...
+function FnA(arg,callback){
+	this.fnCont = function(tArg){
+		console.log("from FnA：入参的值是 " + tArg);
+		var num = arg * 10 ;
+		if(typeof callback == "function"){
+			console.log("from FnA：执行回调函数");
+			callback(num,10);
+		}
+	}
+}
+
+// 倒计时结束后，将入参乘上5，然后传给fnC ...
+function FnB(arg,callback){
+	this.fnCont = function(tArg,cDown){
+		console.log("from FnB：入参的值是" + tArg);
+		var num = tArg * 5;
+		var countDown = cDown;
+		console.log("from FnB：进入倒计时 -> "+countDown+"s");
+		var tTout = setInterval(function(){
+			console.log("from FnB：进入倒计时 -> " + --countDown + "s");
+			if(countDown <= 0){
+				console.log("from FnB：倒计数结束");
+				countDown = -1;
+				clearTimeout(tTout);
+
+				if(typeof callback == "function"){
+					console.log("from FnB：执行回调函数");
+					callback(num);
+				}
+			}
+		},1000);
+
+	}
+};
+
+// 将参数打印出来 ...
+function FnC(arg,callback){
+	this.fnCont = function(tArg,awr){
+		console.log("from FnC：入参的值是" + tArg);
+		if(typeof callback == "function"){
+			callback();
+		}
+	}
+};
+
+// 组合链式关系 ...
+chainedFn([
+	   {"fnName":FnA,"fnArg":2},
+	   {"fnName":FnB},
+	   {"fnName":FnC,},
+	   ]);
+	   
+执行结果：
+------------------------------------------------------
+from FnA：入参的值是 2
+userCenter.js?v=undefined:53 from FnA：执行回调函数
+userCenter.js?v=undefined:60 from FnB：入参的值是20
+userCenter.js?v=undefined:63 from FnB：进入倒计时 -> 10s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 9s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 8s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 7s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 6s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 5s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 4s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 3s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 2s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 1s
+userCenter.js?v=undefined:65 from FnB：进入倒计时 -> 0s
+userCenter.js?v=undefined:67 from FnB：倒计数结束
+userCenter.js?v=undefined:72 from FnB：执行回调函数
+userCenter.js?v=undefined:82 from FnC：入参的值是100
+------------------------------------------------------
